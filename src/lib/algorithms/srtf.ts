@@ -1,56 +1,38 @@
-import type { Process } from "./types";
+import { Process, GanttBlock } from "./types";
 
-export const computeSRTF = (processes: Process[]) => {
-  const sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
-  const n = sorted.length;
-  const remaining = sorted.map((p) => p.burst);
-  const finishTime: number[] = new Array(n).fill(0);
-  const waiting: number[] = new Array(n).fill(0);
-  const turnaround: number[] = new Array(n).fill(0);
+export const computeSRTF = (processes: Process[]): GanttBlock[] => {
+  const remaining = processes.map(p => ({ ...p, left: p.burst }));
+  const timeline: GanttBlock[] = [];
 
-  let complete = 0;
-  let t = 0;
-  let minm = Infinity;
-  let shortest = 0;
-  let check = false;
+  let time = 0;
+  let completed = 0;
 
-  while (complete !== n) {
-    for (let j = 0; j < n; j++) {
-      if (sorted[j].arrival <= t && remaining[j] < minm && remaining[j] > 0) {
-        minm = remaining[j];
-        shortest = j;
-        check = true;
-      }
-    }
+  while (completed < remaining.length) {
+    const available = remaining.filter(p => p.arrival <= time && p.left > 0);
 
-    if (!check) {
-      t++;
+    if (available.length === 0) {
+      const nextArrival = Math.min(...remaining.filter(p => p.left > 0).map(p => p.arrival));
+      timeline.push({ pid: "IDLE", start: time, finish: nextArrival });
+      time = nextArrival;
       continue;
     }
 
-    remaining[shortest]--;
-    minm = remaining[shortest] === 0 ? Infinity : remaining[shortest];
+    available.sort((a, b) => a.left - b.left);
+    const p = available[0];
 
-    if (remaining[shortest] === 0) {
-      complete++;
-      check = false;
-      finishTime[shortest] = t + 1;
-      const wt = finishTime[shortest] - sorted[shortest].burst - sorted[shortest].arrival;
-      waiting[shortest] = wt < 0 ? 0 : wt;
+    const last = timeline[timeline.length - 1];
+
+    if (last && last.pid === p.pid && last.finish === time) {
+      last.finish++;
+    } else {
+      timeline.push({ pid: p.pid, start: time, finish: time + 1 });
     }
 
-    t++;
+    p.left--;
+    if (p.left === 0) completed++;
+
+    time++;
   }
 
-  for (let i = 0; i < n; i++) {
-    turnaround[i] = sorted[i].burst + waiting[i];
-  }
-
-  return sorted.map((p, i) => ({
-    ...p,
-    start: p.arrival,
-    finish: finishTime[i],
-    waiting: waiting[i],
-    turnaround: turnaround[i],
-  }));
+  return timeline;
 };

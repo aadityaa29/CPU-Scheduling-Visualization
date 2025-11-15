@@ -1,28 +1,34 @@
-import type { Process } from "./types";
+import { Process, GanttBlock } from "./types";
 
-export const computePriority = (processes: Process[]) => {
-  const ready: Process[] = [];
-  const sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
-  const result: any[] = [];
-  let currentTime = 0;
+export const computePriority = (processes: Process[]): GanttBlock[] => {
+  const remaining = processes.map(p => ({ ...p }));
+  const timeline: GanttBlock[] = [];
 
-  while (ready.length > 0 || sorted.length > 0) {
-    while (sorted.length > 0 && sorted[0].arrival <= currentTime) {
-      ready.push(sorted.shift()!);
-    }
-    if (ready.length === 0) {
-      currentTime = sorted[0].arrival;
+  let completed = 0;
+  let time = 0;
+
+  while (completed < remaining.length) {
+    const available = remaining.filter(p => p.arrival <= time && p.burst > 0);
+
+    if (available.length === 0) {
+      const nextArrival = Math.min(...remaining.filter(p => p.burst > 0).map(p => p.arrival));
+      timeline.push({ pid: "IDLE", start: time, finish: nextArrival });
+      time = nextArrival;
       continue;
     }
-    ready.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
-    const p = ready.shift()!;
-    const start = currentTime;
-    const finish = start + p.burst;
-    const turnaround = finish - p.arrival;
-    const waiting = start - p.arrival;
-    result.push({ ...p, start, finish, waiting, turnaround });
-    currentTime = finish;
+
+    available.sort((a, b) => a.priority - b.priority);
+    const p = available[0];
+
+    const start = time;
+    const finish = time + p.burst;
+
+    timeline.push({ pid: p.pid, start, finish });
+
+    time = finish;
+    p.burst = 0;
+    completed++;
   }
 
-  return result;
+  return timeline;
 };

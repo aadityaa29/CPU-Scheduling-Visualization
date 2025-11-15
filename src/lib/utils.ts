@@ -1,6 +1,13 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+// Required for all shadcn/ui components
+export function cn(...inputs: any[]) {
+  return twMerge(clsx(inputs));
 }
+
+// Your existing exports
+export const clone = <T,>(obj: T): T => structuredClone(obj);
+
+export const getPidNumber = (pid: string) =>
+  Number(pid.replace(/\D/g, "")) || 0;

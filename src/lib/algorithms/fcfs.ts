@@ -1,17 +1,23 @@
-export function computeFCFS(processes: any[]) {
+import { Process, GanttBlock } from "./types";
+
+export const computeFCFS = (processes: Process[]): GanttBlock[] => {
   const sorted = [...processes].sort((a, b) => a.arrival - b.arrival);
+  const timeline: GanttBlock[] = [];
+
   let time = 0;
-  const results = [];
 
   for (const p of sorted) {
-    if (time < p.arrival) time = p.arrival;
-    const start = time;
-    const finish = time + p.burst;
-    const turnaround = finish - p.arrival;
-    const waiting = turnaround - p.burst;
-    results.push({ pid: p.pid, start, finish, waiting, turnaround });
+    const start = Math.max(time, p.arrival);
+
+    if (start > time) {
+      timeline.push({ pid: "IDLE", start: time, finish: start });
+    }
+
+    const finish = start + p.burst;
+    timeline.push({ pid: p.pid, start, finish });
+
     time = finish;
   }
 
-  return results;
-}
+  return timeline;
+};
